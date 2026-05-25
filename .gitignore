@@ -1,0 +1,35 @@
+# Entorno virtual
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# MLflow (generados automáticamente)
+mlflow.db
+mlartifacts/
+mlruns/
+
+# Datos (no subir el CSV con datos reales)
+data/raw/*.csv
+data/processed/
+vectorstore/
+
+# Reportes generados
+reports/evaluation/*.json
+
+# Variables de entorno
+.env
+
+# VS Code
+.vscode/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
