@@ -24,6 +24,10 @@ LLM_TOP_K = 10             # Solo considera los 10 tokens más probables
 LLM_TOP_P = 0.9            # Probabilidad acumulada máxima
 RETRIEVER_K = 4            # Tickets similares a recuperar
 
+# Mistral API
+MISTRAL_API_KEY = "1lfyDWHlZrLDG76fsn9UQ8zKN9nXijKC"
+MISTRAL_MODEL = "mistral-small-latest"
+
 # Crear carpetas si no existen al importar config
 for _d in [RAW_DATA_DIR, PROCESSED_DATA_DIR, VECTORSTORE_DIR, EVALUATION_DIR]:
     _d.mkdir(parents=True, exist_ok=True)

@@ -9,8 +9,10 @@ from pathlib import Path
 from PIL import Image
 import streamlit as st
 
-API_URL = "http://127.0.0.1:8000/ask"
-HEALTH_URL = "http://127.0.0.1:8000/health"
+MODELO_ACTIVO = "mistral-small-latest"
+
+API_URL = "http://127.0.0.1:8080/ask"
+HEALTH_URL = "http://127.0.0.1:8080/health"
 
 def img_to_base64(path: str) -> str:
     try:
@@ -34,23 +36,26 @@ favicon = Image.open("app/assets/recamierco-favicon.ico")
 st.set_page_config(
     page_title="Asistente de Soporte EVA — Recamier",
     page_icon=favicon,
-    layout="centered",
+    layout="wide",
 )
 
 # ---------------------------------------------------------------------------
-# Inicializar session_id y historial de chat
+# Inicializar estados
 # ---------------------------------------------------------------------------
 if "session_id" not in st.session_state:
     st.session_state["session_id"] = str(uuid.uuid4())[:8]
 
-if "chat_history" not in st.session_state:
-    st.session_state["chat_history"] = []
+if "sesiones" not in st.session_state:
+    sid = st.session_state["session_id"]
+    st.session_state["sesiones"] = {sid: {"nombre": "Nueva conversación", "historial": []}}
+    st.session_state["sesion_actual"] = sid
 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     * { font-family: 'Inter', sans-serif; }
 
+    /* Fondo blanco general */
     .stApp,
     [data-testid="stAppViewContainer"],
     [data-testid="stMain"],
@@ -58,6 +63,51 @@ st.markdown("""
         background-color: #FFFFFF !important;
     }
 
+    /* Ocultar barra superior, deploy y botón colapsar sidebar */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    .stDeployButton {display: none !important;}
+    header[data-testid="stHeader"] {display: none !important;}
+    [data-testid="stHeader"] {display: none !important;}
+    [data-testid="collapsedControl"] {display: none !important;}
+
+    /* Sidebar blanco limpio */
+    [data-testid="stSidebar"] {
+        background-color: #FFFFFF !important;
+        border-right: 1px solid #E2E8F0 !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: #2D3748 !important;
+    }
+    .sidebar-section {
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #A0AEC0 !important;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        margin: 1rem 0 0.5rem;
+    }
+
+    /* Botones del sidebar */
+    [data-testid="stSidebar"] .stButton > button {
+        background: #F7FAFC !important;
+        color: #2D3748 !important;
+        border: 1.5px solid #E2E8F0 !important;
+        border-radius: 8px !important;
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+        text-align: left !important;
+        transition: all 0.2s !important;
+        box-shadow: none !important;
+        padding: 0.5rem 0.8rem !important;
+    }
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background: #EBF4FF !important;
+        border-color: #87CEEB !important;
+        color: #1A6B8A !important;
+    }
+
+    /* Banner */
     .banner-wrap {
         border-radius: 16px;
         overflow: hidden;
@@ -67,24 +117,21 @@ st.markdown("""
     .banner-wrap img {
         width: 100%;
         display: block;
-        max-height: 200px;
+        max-height: 160px;
         object-fit: cover;
     }
 
     .hero-section {
         background: transparent;
-        border: none;
-        box-shadow: none;
-        padding: 0.5rem 0 2rem;
+        padding: 0.5rem 0 1.5rem;
         text-align: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
     .hero-section h1 {
         color: #1A1A2E;
-        font-size: 2.4rem;
+        font-size: 2rem;
         font-weight: 700;
-        margin: 0 0 1.2rem;
-        letter-spacing: -0.5px;
+        margin: 0 0 1rem;
     }
     .hero-eva-logo { display: flex; justify-content: center; }
 
@@ -93,28 +140,28 @@ st.markdown("""
         border: 1px solid #9AE6B4;
         border-left: 4px solid #38A169;
         border-radius: 10px;
-        padding: 0.65rem 1rem;
+        padding: 0.55rem 1rem;
         color: #276749;
-        font-size: 0.85rem;
+        font-size: 0.82rem;
         font-weight: 500;
-        margin-bottom: 1.2rem;
+        margin-bottom: 1rem;
     }
     .status-err {
         background: #FFF5F5;
         border: 1px solid #FEB2B2;
         border-left: 4px solid #E53E3E;
         border-radius: 10px;
-        padding: 0.65rem 1rem;
+        padding: 0.55rem 1rem;
         color: #C53030;
-        font-size: 0.85rem;
-        margin-bottom: 1.2rem;
+        font-size: 0.82rem;
+        margin-bottom: 1rem;
     }
 
     .section-title {
-        font-size: 1rem;
+        font-size: 0.95rem;
         font-weight: 600;
         color: #1A1A2E;
-        margin: 1.4rem 0 0.7rem;
+        margin: 1.2rem 0 0.6rem;
     }
 
     /* Preguntas frecuentes — rectángulo */
@@ -136,7 +183,7 @@ st.markdown("""
         color: #1A6B8A !important;
     }
 
-    /* Botón Consultar — azul pill */
+    /* Botón Consultar */
     .stButton > button[kind="primary"] {
         background: #87CEEB !important;
         color: #1A3A5C !important;
@@ -145,37 +192,14 @@ st.markdown("""
         font-weight: 600 !important;
         border-radius: 99px !important;
         box-shadow: 0 3px 12px rgba(135,206,235,0.4) !important;
-        transition: background 0.2s, box-shadow 0.2s, transform 0.2s !important;
+        transition: background 0.2s, transform 0.2s !important;
         padding: 0.55rem 1rem !important;
+        text-align: center !important;
     }
     .stButton > button[kind="primary"]:hover {
         background: #7C4DFF !important;
         color: white !important;
-        box-shadow: 0 6px 20px rgba(124,77,255,0.4) !important;
         transform: translateY(-1px) !important;
-    }
-
-    /* Botón Limpiar HTML */
-    .btn-limpiar {
-        background: #7DBE7E;
-        color: white;
-        border: none;
-        border-radius: 99px;
-        font-size: 0.95rem;
-        font-weight: 600;
-        padding: 0.55rem 1rem;
-        width: 100%;
-        cursor: pointer;
-        box-shadow: 0 3px 12px rgba(125,190,126,0.4);
-        transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
-        font-family: 'Inter', sans-serif;
-        height: 42px;
-    }
-    .btn-limpiar:hover {
-        background: #7C4DFF !important;
-        color: white;
-        box-shadow: 0 6px 20px rgba(124,77,255,0.4);
-        transform: translateY(-1px);
     }
 
     .stTextArea textarea {
@@ -196,7 +220,6 @@ st.markdown("""
         box-shadow: none !important;
     }
 
-    /* Chat history */
     .chat-user {
         background: #E8F4FD;
         border-radius: 12px 12px 2px 12px;
@@ -221,12 +244,6 @@ st.markdown("""
         font-size: 0.7rem;
         color: #A0AEC0;
         margin-top: 0.3rem;
-    }
-    .session-info {
-        font-size: 0.72rem;
-        color: #A0AEC0;
-        text-align: right;
-        margin-bottom: 0.5rem;
     }
 
     .respuesta-box {
@@ -276,31 +293,64 @@ st.markdown("""
         color: #FFFFFF;
         font-size: 1rem;
         font-weight: 500;
-        margin-top: 2.5rem;
-        padding: 1.4rem;
+        margin-top: 2rem;
+        padding: 1.2rem;
         border-radius: 10px;
         letter-spacing: 0.5px;
     }
-
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    .stDeployButton {display: none;}
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------------------------
-# Banner
+# SIDEBAR
+# ---------------------------------------------------------------------------
+with st.sidebar:
+    logo_rec_tag = get_img_tag(
+        str(ASSETS / "recamier-logo.png"),
+        width="140px",
+        extra_style="filter:brightness(0); margin-bottom:1.5rem; display:block;"
+    )
+    if logo_rec_tag:
+        st.markdown(logo_rec_tag, unsafe_allow_html=True)
+    else:
+        st.markdown("**Recamier**")
+
+    st.markdown('<div class="sidebar-section">Conversaciones</div>',
+                unsafe_allow_html=True)
+
+    if st.button("+ Nueva conversación", use_container_width=True, key="nueva_sidebar"):
+        nuevo_sid = str(uuid.uuid4())[:8]
+        st.session_state["sesiones"][nuevo_sid] = {
+            "nombre": "Nueva conversación",
+            "historial": []
+        }
+        st.session_state["sesion_actual"] = nuevo_sid
+        st.session_state["session_id"] = nuevo_sid
+        st.session_state["pregunta_actual"] = ""
+        st.rerun()
+
+    st.markdown("---")
+
+    # Solo mostrar conversaciones con historial
+    for sid, datos in list(st.session_state["sesiones"].items()):
+        if not datos["historial"]:
+            continue
+        nombre = datos["nombre"]
+        if st.button(nombre, key=f"ses_{sid}", use_container_width=True):
+            st.session_state["sesion_actual"] = sid
+            st.session_state["session_id"] = sid
+            st.rerun()
+
+# ---------------------------------------------------------------------------
+# CONTENIDO PRINCIPAL
 # ---------------------------------------------------------------------------
 banner_tag = get_img_tag(BANNER, width="100%",
-                         extra_style="max-height:200px;object-fit:cover;display:block;")
+                         extra_style="max-height:160px;object-fit:cover;display:block;")
 if banner_tag:
     st.markdown(f'<div class="banner-wrap">{banner_tag}</div>',
                 unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
-# Hero
-# ---------------------------------------------------------------------------
-logo_eva_tag = get_img_tag(LOGO_EVA, width="300px",
+logo_eva_tag = get_img_tag(LOGO_EVA, width="260px",
                            extra_style="filter:brightness(0);")
 st.markdown(f"""
 <div class="hero-section">
@@ -309,9 +359,7 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
 # Estado API
-# ---------------------------------------------------------------------------
 try:
     health = requests.get(HEALTH_URL, timeout=3)
     if health.status_code == 200:
@@ -322,23 +370,21 @@ try:
         st.markdown(
             '<div class="status-err">El sistema respondió con un estado inesperado</div>',
             unsafe_allow_html=True)
-except requests.exceptions.ConnectionError:
+except Exception:
     st.markdown("""
     <div class="status-err">
         No se puede conectar con la API —
-        Ejecuta: <code>uvicorn api.main:app --reload --host 127.0.0.1 --port 8000</code>
+        Ejecuta: <code>uvicorn api.main:app --reload --host 127.0.0.1 --port 8080</code>
     </div>""", unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
-# Historial de conversación (memoria visual de sesión)
-# ---------------------------------------------------------------------------
-if st.session_state["chat_history"]:
+# Historial conversación actual
+historial_actual = st.session_state["sesiones"].get(
+    st.session_state["sesion_actual"], {}).get("historial", [])
+
+if historial_actual:
     st.markdown('<div class="section-title">Conversación</div>',
                 unsafe_allow_html=True)
-    st.markdown(
-        f'<div class="session-info">Sesión: {st.session_state["session_id"]}</div>',
-        unsafe_allow_html=True)
-    for msg in st.session_state["chat_history"]:
+    for msg in historial_actual:
         if msg["role"] == "user":
             st.markdown(
                 f'<div class="chat-user">🧑 {msg["content"]}</div>',
@@ -346,14 +392,12 @@ if st.session_state["chat_history"]:
         else:
             st.markdown(
                 f'<div class="chat-bot">{msg["content"]}'
-                f'<div class="chat-meta">⏱️ {msg.get("latencia", "")}s · llama3.2</div>'
+                f'<div class="chat-meta">⏱️ {msg.get("latencia", "")}s · {MODELO_ACTIVO}</div>'
                 f'</div>',
                 unsafe_allow_html=True)
     st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
 # Preguntas frecuentes
-# ---------------------------------------------------------------------------
 st.markdown('<div class="section-title">Preguntas frecuentes</div>',
             unsafe_allow_html=True)
 
@@ -373,15 +417,9 @@ for i, ejemplo in enumerate(ejemplos):
 
 st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
 # Nueva consulta
-# ---------------------------------------------------------------------------
 st.markdown('<div class="section-title">Nueva consulta</div>',
             unsafe_allow_html=True)
-
-if st.session_state.get("limpiar_clicked"):
-    st.session_state["pregunta_actual"] = ""
-    st.session_state["limpiar_clicked"] = False
 
 pregunta_default = st.session_state.get("pregunta_actual", "")
 
@@ -393,26 +431,9 @@ pregunta = st.text_area(
     label_visibility="collapsed",
 )
 
-col1, col2 = st.columns(2)
-with col1:
-    consultar = st.button("Consultar", type="primary", use_container_width=True)
-with col2:
-    st.markdown("""
-        <button class="btn-limpiar"
-            onclick="
-                var inputs = window.parent.document.querySelectorAll('textarea');
-                inputs.forEach(function(el){
-                    el.value = '';
-                    el.dispatchEvent(new Event('input', {bubbles:true}));
-                });
-            ">
-            Limpiar
-        </button>
-    """, unsafe_allow_html=True)
+consultar = st.button("Consultar", type="primary", use_container_width=True)
 
-# ---------------------------------------------------------------------------
 # Procesar consulta
-# ---------------------------------------------------------------------------
 if consultar and pregunta.strip():
     with st.spinner("Analizando tickets y generando respuesta..."):
         try:
@@ -428,16 +449,27 @@ if consultar and pregunta.strip():
             if "error" in result:
                 st.error(f"{result['error']}")
             else:
-                # Agregar al historial visual
-                st.session_state["chat_history"].append({
+                sid = st.session_state["sesion_actual"]
+
+                if sid not in st.session_state["sesiones"]:
+                    st.session_state["sesiones"][sid] = {
+                        "nombre": "Nueva conversación",
+                        "historial": []
+                    }
+
+                st.session_state["sesiones"][sid]["historial"].append({
                     "role": "user",
                     "content": pregunta.strip()
                 })
-                st.session_state["chat_history"].append({
+                st.session_state["sesiones"][sid]["historial"].append({
                     "role": "assistant",
                     "content": result["respuesta"],
                     "latencia": result["latencia_segundos"]
                 })
+
+                if len(st.session_state["sesiones"][sid]["historial"]) == 2:
+                    st.session_state["sesiones"][sid]["nombre"] = pregunta.strip()[:30]
+
                 st.session_state["pregunta_actual"] = ""
 
                 st.markdown(f"""
@@ -455,7 +487,7 @@ if consultar and pregunta.strip():
                         <span class="metric-lbl">Tickets analizados</span>
                     </div>
                     <div class="metric-card">
-                        <span class="metric-val">llama3.2</span>
+                        <span class="metric-val">{MODELO_ACTIVO}</span>
                         <span class="metric-lbl">Modelo activo</span>
                     </div>
                 </div>
@@ -463,16 +495,14 @@ if consultar and pregunta.strip():
                 st.rerun()
 
         except requests.exceptions.ConnectionError:
-            st.error("No se pudo conectar con la API en :8000")
+            st.error("No se pudo conectar con la API en :8080")
         except requests.exceptions.Timeout:
             st.warning("La consulta tardó demasiado. Intenta de nuevo.")
 
 elif consultar and not pregunta.strip():
     st.warning("Escribe una pregunta antes de consultar.")
 
-# ---------------------------------------------------------------------------
 # Footer
-# ---------------------------------------------------------------------------
 st.markdown("""
 <div class="footer">
     Recamier · Transformación Digital · 2026

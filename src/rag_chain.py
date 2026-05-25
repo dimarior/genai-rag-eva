@@ -33,6 +33,10 @@ from src.config import (
     LLM_TOP_K,
     LLM_TOP_P,
     RETRIEVER_K,
+    #GEMINI_API_KEY,
+    #GEMINI_MODEL,
+    MISTRAL_API_KEY,
+    MISTRAL_MODEL,
 )
 from src.memory import (
     save_message,
@@ -47,53 +51,79 @@ mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 mlflow.set_experiment(EXPERIMENT_NAME)
 
 PROMPT_TEMPLATE = [
-    ("system", """Eres EVA Assistant, el asistente virtual especializado 
+    ("system", """Eres EVA Assistant, asistente virtual especializado
 en soporte técnico de la aplicación móvil EVA de Recamier Colombia.
 
-ROL:
-Eres un experto en soporte que conoce todos los tickets históricos 
-de la app EVA. Tu función es ayudar a los agentes de soporte y 
-analistas de soporte a encontrar soluciones basadas en casos reales resueltos.
+COMPORTAMIENTO CONVERSACIONAL:
+- Si el usuario saluda sin dar su nombre, responde cordialmente
+  y preséntate brevemente:
+  "Buenos días/tardes, soy EVA Assistant, asistente virtual de 
+  soporte de Recamier. ¿En qué puedo ayudarle?"
+- NO preguntes el nombre proactivamente — espera a que el usuario
+  lo comparta voluntariamente.
+- Si el usuario comparte su nombre, acúsalo de recibo cordialmente
+  y úsalo en las respuestas siguientes.
+- Si preguntan "¿cómo me llamo?" y conoces el nombre del historial,
+  responde directamente sin buscar en tickets:
+  "Usted se llama [nombre]."
+- Para preguntas personales o sociales que no son de soporte,
+  responde brevemente y redirige al tema de EVA.
 
-INSTRUCCIONES DE RESPUESTA:
-1. Responde SIEMPRE en español
-2. Basa tu respuesta ÚNICAMENTE en el contexto de tickets proporcionado
-3. Si el contexto no tiene información suficiente, di exactamente: 
-   "No encontré tickets relacionados con esta consulta en el historial"
-4. Sé conciso y directo - máximo 3 párrafos
-5. Si hay una solución clara en los tickets, ponla primero
-6. Menciona patrones si varios tickets tienen el mismo problema
-     
+ROL:
+Experto en soporte que conoce todos los tickets históricos de EVA.
+Ayudas a agentes de soporte y analistas a encontrar soluciones
+basadas en casos reales documentados en el sistema.
+
+CONTEXTO DEL SISTEMA:
+- Los tickets son de tipo: Incidente o problema técnico / Nuevo requerimiento
+- Las subcategorías son: Aplicaciones/EVA y Aplicaciones/EVA 4.0
+- Las ciudades principales: Cali, Bogotá, Lima, Medellín, Bucaramanga
+- Los estados posibles: Cierre Final, Pausado x Respuesta del Usuario,
+  Pausado x Derivación a Aplicaciones, Pausado x 3er Nivel
+
 TONO Y ESTILO:
 - Usa un tono profesional, cordial y corporativo
-- Antes de dar la solución, valida la situación con frases como:
-  "Hemos revisado el historial de casos relacionados..."
-  "Con base en la información disponible..."
+- Antes de dar la solución valida con frases como:
   "De acuerdo con los registros de soporte..."
-  "Según los casos documentados en el sistema..."
-- Evita tecnicismos innecesarios, comunica de forma clara y precisa
-- Trata al usuario de "usted" siempre — mantén el protocolo corporativo
-- No uses frases genéricas de soporte ni expresiones coloquiales
-- El cierre de cada respuesta debe ser una acción concreta o recomendación     
+  "Con base en la información disponible en el sistema..."
+  "Según los casos documentados..."
+- Trata al usuario de "usted" siempre
+- Si conoces el nombre del usuario úsalo naturalmente
+- Cierra siempre con una acción concreta o recomendación
 
-FORMATO DE RESPUESTA:
-- Empieza directamente con la respuesta, sin saludos
-- Si hay pasos de solución, usa numeración: 1. 2. 3.
-- Si hay múltiples casos similares menciona cuántos: "En X tickets similares..."
-- Termina con una recomendación práctica si aplica
+INSTRUCCIONES:
+1. Responde SIEMPRE en español
+2. Si el contexto tiene información relevante úsala para responder
+3. Si NO hay información suficiente en los tickets responde exactamente:
+   "De acuerdo con nuestra base de conocimiento, no encontré registros 
+   relacionados con su consulta. Le sugiero contactar directamente al 
+   equipo de soporte técnico para una atención personalizada."
+4. Máximo 3 párrafos — sé conciso y directo
+5. Si hay solución clara en los tickets ponla primero
+
+PLANTILLA DE RESPUESTA cuando hay información:
+**Situación identificada:**
+[Describe el problema basado en los tickets]
+
+**Solución documentada:**
+[Pasos exactos según los tickets — numerados]
+
+**Recomendación:**
+[Acción concreta para prevenir o escalar]
 
 LO QUE NO DEBES HACER:
 - No inventes soluciones que no estén en los tickets
-- No uses información fuera del contexto proporcionado
 - No respondas en inglés
-- No des respuestas genéricas de soporte técnico"""),
+- No ignores el nombre del usuario si lo conoces"""),
 
-    ("human", """Contexto de tickets similares de EVA:
+    ("human", """{history}
+
+Contexto de tickets similares de EVA:
 {context}
 
-Pregunta del agente: {question}
+Consulta: {question}
 
-Respuesta basada en tickets reales:"""),
+Respuesta:"""),
 ]
 
 
@@ -174,16 +204,56 @@ def retrieve_documents(question: str):
     docs = retriever.invoke(question)
     return docs
 
+# Modelo Local------
+# @mlflow.trace(name="generate_answer")
+# def generate_answer(question: str, context: str, history: str = "") -> str:
+#     """Genera respuesta usando contexto + historial."""
+#     prompt = ChatPromptTemplate.from_messages(PROMPT_TEMPLATE)
+#     llm = OllamaLLM(
+#         model=OLLAMA_LLM_MODEL,
+#         temperature=LLM_TEMPERATURE,
+#         top_k=LLM_TOP_K,
+#         top_p=LLM_TOP_P,
+#     )
+#     chain = prompt | llm | StrOutputParser()
+#     return chain.invoke({
+#         "context": context,
+#         "question": question,
+#         "history": history,
+#     })
 
+# Modelo Gemini------
+# @mlflow.trace(name="generate_answer")
+# def generate_answer(question: str, context: str, history: str = "") -> str:
+#     """Genera respuesta usando Gemini API + contexto + historial."""
+#     from langchain_google_genai import ChatGoogleGenerativeAI
+#     import os
+#     os.environ["GOOGLE_API_KEY"] = GEMINI_API_KEY
+
+#     prompt = ChatPromptTemplate.from_messages(PROMPT_TEMPLATE)
+#     llm = ChatGoogleGenerativeAI(
+#         model=GEMINI_MODEL,
+#         temperature=LLM_TEMPERATURE,
+#     )
+#     chain = prompt | llm | StrOutputParser()
+#     return chain.invoke({
+#         "context": context,
+#         "question": question,
+#         "history": history,
+#     })
+
+
+# Modelo Mistral------
 @mlflow.trace(name="generate_answer")
 def generate_answer(question: str, context: str, history: str = "") -> str:
-    """Genera respuesta usando contexto + historial."""
+    """Genera respuesta usando Mistral API."""
+    from langchain_mistralai import ChatMistralAI
+    
     prompt = ChatPromptTemplate.from_messages(PROMPT_TEMPLATE)
-    llm = OllamaLLM(
-        model=OLLAMA_LLM_MODEL,
+    llm = ChatMistralAI(
+        model=MISTRAL_MODEL,
+        api_key=MISTRAL_API_KEY,
         temperature=LLM_TEMPERATURE,
-        top_k=LLM_TOP_K,
-        top_p=LLM_TOP_P,
     )
     chain = prompt | llm | StrOutputParser()
     return chain.invoke({
@@ -195,30 +265,23 @@ def generate_answer(question: str, context: str, history: str = "") -> str:
 
 @mlflow.trace(name="rag_pipeline_eva")
 def ask(question: str, session_id: str = "default") -> str:
-    """
-    Pipeline RAG completo con memoria persistente SQLite.
-
-    Flujo:
-      1. Recupera historial de la sesión desde SQLite
-      2. Busca tickets similares en ChromaDB
-      3. Genera respuesta con contexto + historial
-      4. Guarda pregunta y respuesta en SQLite
-    """
-    # 1. Recuperar historial de sesión
+    # Detectar si es conversación social — no buscar en tickets
+    saludos = ["me llamo", "mi nombre es", "hola", "buenos", "gracias", "chao"]
+    es_social = any(s in question.lower() for s in saludos)
+    
     history_list = get_history(session_id, limit=6)
     history_text = format_history_for_prompt(history_list)
 
-    # 2. Recuperar contexto de tickets
-    docs = retrieve_documents(question)
-    context = format_docs(docs)
+    if es_social:
+        # Responder directamente sin buscar en tickets
+        context = f"El usuario dice: {question}"
+    else:
+        docs = retrieve_documents(question)
+        context = format_docs(docs)
 
-    # 3. Generar respuesta
     respuesta = generate_answer(question, context, history_text)
-
-    # 4. Guardar en memoria SQLite
     save_message(session_id, "user", question)
     save_message(session_id, "assistant", respuesta)
-
     return respuesta
 
 
