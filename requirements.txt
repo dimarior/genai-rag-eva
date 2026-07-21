@@ -1,18 +1,38 @@
+# ─── Core RAG ────────────────────────────────────────────────────────────────
 langchain
 langchain-community
-langchain-ollama
-langchain-chroma
 langchain-core
 langchain-text-splitters
+langchain-chroma
 chromadb
 pypdf
+openpyxl
+
+# ─── LLM (nube) / Embeddings (local, sin servidor externo) ───────────────────
+langchain-mistralai
+sentence-transformers
+langchain-huggingface
+
+# ─── API & Frontend ──────────────────────────────────────────────────────────
 fastapi
 uvicorn
 streamlit
 requests
-prometheus-client
-pandas
-mlflow[genai]
-pytest
 python-dotenv
+
+# ─── MLOps / Monitoreo ────────────────────────────────────────────────────────
+prometheus-client
+mlflow[genai]
+
+# ─── Utils ───────────────────────────────────────────────────────────────────
+pandas
 pillow
+pytest
+
+# ─── Multimodal ───────────────────────────────────────────────────────────────
+faster-whisper
+easyocr
+pymupdf
+torch
+torchvision
+python-multipart

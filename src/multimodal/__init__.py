@@ -1,7 +1,7 @@
 """
 src/multimodal/
 ───────────────
-Módulos de procesamiento multimodal
+Módulos de procesamiento multimodal para EVA (soporte Recamier).
 
   audio.py     → Transcripción de voz con Whisper (OpenAI)
   image.py     → Extracción de texto de imágenes con EasyOCR
