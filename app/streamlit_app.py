@@ -117,8 +117,8 @@ st.markdown("""
     .banner-wrap img {
         width: 100%;
         display: block;
-        max-height: 160px;
-        object-fit: cover;
+        max-height: 260px;
+        object-fit: contain;
     }
 
     .hero-section {
@@ -345,7 +345,7 @@ with st.sidebar:
 # CONTENIDO PRINCIPAL
 # ---------------------------------------------------------------------------
 banner_tag = get_img_tag(BANNER, width="100%",
-                         extra_style="max-height:160px;object-fit:cover;display:block;")
+                         extra_style="max-height:300px;object-fit:contain;display:block;background:#fff;")
 if banner_tag:
     st.markdown(f'<div class="banner-wrap">{banner_tag}</div>',
                 unsafe_allow_html=True)
