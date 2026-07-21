@@ -33,3 +33,7 @@ reports/evaluation/*.json
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
+
+# Base de datos / memoria conversacional
+eva_memory.db
+*.db
