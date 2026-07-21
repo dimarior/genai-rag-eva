@@ -16,8 +16,9 @@ mlflow.db
 mlartifacts/
 mlruns/
 
-# Datos (no subir el CSV con datos reales)
+# Datos (no subir archivos con datos reales de tickets)
 data/raw/*.csv
+data/raw/*.xlsx
 data/processed/
 vectorstore/
 
