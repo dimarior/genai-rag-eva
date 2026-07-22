@@ -658,17 +658,23 @@ st.markdown("""
 
     /* Evitar que los botones en fila (compañías, FAQs, Imagen/PDF/Voz) se
        apilen verticalmente en pantallas angostas; se encogen en vez de
-       apilarse, para que el layout se vea consistente en cualquier tamaño */
+       apilarse, para que el layout se vea consistente en cualquier tamaño.
+       El texto del boton NUNCA se parte en varias lineas. */
     [data-testid="stHorizontalBlock"] {
         flex-wrap: nowrap !important;
     }
     [data-testid="stHorizontalBlock"] [data-testid="column"] {
-        min-width: 0 !important;
+        min-width: 70px !important;
+    }
+    [data-testid="stHorizontalBlock"] .stButton > button {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
     @media (max-width: 600px) {
         [data-testid="stHorizontalBlock"] .stButton > button {
             font-size: 0.72rem !important;
-            padding: 0.4rem 0.5rem !important;
+            padding: 0.4rem 0.4rem !important;
         }
     }
 </style>
