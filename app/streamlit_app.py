@@ -739,14 +739,12 @@ banner_tag = get_img_tag(BANNER, width="100%", extra_style="display:block;")
 if banner_tag:
     st.markdown(banner_tag, unsafe_allow_html=True)
 
-# Status del sistema (equivalente al health-check, pero sin API externa)
-try:
-    _ = get_rag()
-    st.markdown('<div class="status-ok">Sistema conectado y operando correctamente</div>',
-                unsafe_allow_html=True)
-except Exception as e:
-    st.markdown(f'<div class="status-err">Error iniciando el sistema: {str(e)}</div>',
-                unsafe_allow_html=True)
+# Status del sistema: ya NO se verifica cargando todo el motor RAG en cada
+# vista de la pagina (eso obligaba a importar torch/embeddings de entrada,
+# haciendo lenta la carga inicial incluso antes de hacer una pregunta).
+# Si algo falla de verdad, se muestra al momento de consultar (ver el
+# try/except del boton "Consultar" mas abajo).
+st.markdown('<div class="status-ok">Sistema listo</div>', unsafe_allow_html=True)
 
 # Historial conversacion actual
 historial_actual = st.session_state["sesiones"].get(
