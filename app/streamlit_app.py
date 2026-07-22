@@ -293,11 +293,17 @@ st.markdown("""
         }
     }
 
-    /* El desplegable de Categoria no debe salirse de la pantalla en
-       ventanas pequenas: se limita su alto y se agrega scroll interno */
+    /* El desplegable de Categoria no debe salirse de la pantalla:
+       se limita el alto y se agrega scroll INTERNO en varios niveles
+       posibles del contenedor (Streamlit/BaseWeb varian segun version) */
+    [data-baseweb="popover"] {
+        max-height: 340px !important;
+    }
+    [data-baseweb="menu"],
     [role="listbox"] {
         max-height: 320px !important;
         overflow-y: auto !important;
+        overscroll-behavior: contain !important;
     }
     [data-testid="stSidebar"] * {
         color: #2D3748 !important;
