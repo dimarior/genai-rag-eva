@@ -42,8 +42,18 @@ from src.memory import (
     format_history_for_prompt,
 )
 
-mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
-mlflow.set_experiment(EXPERIMENT_NAME)
+# MLflow es opcional: si no hay un servidor de tracking disponible (por
+# ejemplo, en Streamlit Community Cloud, donde no existe 127.0.0.1:5000),
+# se cambia a un registro local en archivo (sin red) para que el resto del
+# codigo (los decoradores @mlflow.trace usados mas abajo) sigan funcionando
+# sin intentar conectarse a un servidor que no existe.
+try:
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+    mlflow.set_experiment(EXPERIMENT_NAME)
+except Exception as _e:
+    print(f"MLflow remoto no disponible ({_e}); usando registro local en archivo.")
+    mlflow.set_tracking_uri("file:./mlruns")
+    mlflow.set_experiment(EXPERIMENT_NAME)
 
 TABLE_NAME = "documents"
 QUERY_NAME = "match_documents"
