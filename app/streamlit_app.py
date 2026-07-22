@@ -18,7 +18,7 @@ MODELO_ACTIVO = "mistral-small-latest"
 ASSETS = Path("app/assets")
 
 
-@st.cache_resource(show_spinner="Iniciando EVA...")
+@st.cache_resource(show_spinner="Iniciando...")
 def get_rag():
     from src import rag_chain
     return rag_chain
@@ -893,7 +893,7 @@ elif consultar and (hay_texto or hay_archivo):
     filial_nombre = FILIALES[filial_sel]["nombre"] if filial_sel != "todas" else None
     categoria_nombre = CATEGORIAS[categoria_sel_actual]["nombre"] if categoria_sel_actual != "todas" else None
 
-    with st.spinner("Analizando tickets y generando respuesta..."):
+    with st.spinner("Buscando en la base de conocimiento..."):
         try:
             resultado = None
             contenido_usuario = ""
