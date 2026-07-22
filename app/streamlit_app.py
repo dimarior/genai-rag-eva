@@ -403,7 +403,7 @@ st.markdown("""
         background: white !important;
         color: #4A5568 !important;
         border: 1.5px solid #E2E8F0 !important;
-        border-radius: 99px !important;
+        border-radius: 6px !important;
         font-size: 0.82rem !important;
         font-weight: 400 !important;
         transition: all 0.2s !important;
@@ -636,7 +636,8 @@ st.markdown("""
     [data-testid="column"]:has(.st-key-cont_btn_imagen),
     [data-testid="column"]:has(.st-key-cont_btn_pdf),
     [data-testid="column"]:has(.st-key-cont_btn_voz) {
-        min-width: 112px !important;
+        min-width: 130px !important;
+        flex: 0 0 130px !important;
     }
     .st-key-cont_btn_imagen .stButton > button,
     .st-key-cont_btn_pdf .stButton > button,
@@ -647,7 +648,8 @@ st.markdown("""
         border-radius: 10px !important;
         font-weight: 600 !important;
         white-space: nowrap !important;
-        padding: 0.5rem 0.9rem !important;
+        font-size: 0.8rem !important;
+        padding: 0.45rem 0.6rem !important;
     }
     .st-key-cont_btn_imagen .stButton > button:hover,
     .st-key-cont_btn_pdf .stButton > button:hover,
