@@ -155,13 +155,29 @@ Respuesta:"""),
 ]
 
 
+# El modelo de embeddings y el cliente de Supabase se crean UNA SOLA VEZ
+# por proceso y se reutilizan — crearlos de nuevo en cada pregunta era
+# el principal cuello de botella de rendimiento.
+_embeddings_instance = None
+_supabase_client_instance = None
+
+
 def _get_embeddings():
-    """Embeddings locales con sentence-transformers, sin API key."""
-    return HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
+    """Embeddings locales con sentence-transformers, sin API key.
+    Se crea una sola vez y se reutiliza (singleton por proceso)."""
+    global _embeddings_instance
+    if _embeddings_instance is None:
+        _embeddings_instance = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL_NAME)
+    return _embeddings_instance
 
 
 def _get_supabase_client():
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
+    """Cliente de Supabase, tambien reutilizado en vez de recrearse
+    en cada consulta."""
+    global _supabase_client_instance
+    if _supabase_client_instance is None:
+        _supabase_client_instance = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return _supabase_client_instance
 
 
 def _get_vectorstore():

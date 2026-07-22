@@ -276,12 +276,28 @@ st.markdown("""
         height: 2.5rem !important;
     }
 
-    /* Forzar que la sidebar siempre este visible y con ancho fijo */
+    /* Sidebar responsive: ancho comodo en pantallas grandes, pero se
+       adapta en pantallas angostas (tablet/celular) sin tapar el contenido */
     section[data-testid="stSidebar"] {
-        min-width: 340px !important;
+        min-width: 280px !important;
         max-width: 340px !important;
+        width: 24vw !important;
         background-color: #FFFFFF !important;
         border-right: 1px solid #E2E8F0 !important;
+    }
+    @media (max-width: 900px) {
+        section[data-testid="stSidebar"] {
+            min-width: 240px !important;
+            max-width: 85vw !important;
+            width: 70vw !important;
+        }
+    }
+
+    /* El desplegable de Categoria no debe salirse de la pantalla en
+       ventanas pequenas: se limita su alto y se agrega scroll interno */
+    [role="listbox"] {
+        max-height: 320px !important;
+        overflow-y: auto !important;
     }
     [data-testid="stSidebar"] * {
         color: #2D3748 !important;
@@ -632,6 +648,22 @@ st.markdown("""
     .st-key-cont_btn_voz .stButton > button[kind="primary"] * {
         background: #1A3A5C !important;
         color: #FFFFFF !important;
+    }
+
+    /* Evitar que los botones en fila (compañías, FAQs, Imagen/PDF/Voz) se
+       apilen verticalmente en pantallas angostas; se encogen en vez de
+       apilarse, para que el layout se vea consistente en cualquier tamaño */
+    [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important;
+    }
+    [data-testid="stHorizontalBlock"] [data-testid="column"] {
+        min-width: 0 !important;
+    }
+    @media (max-width: 600px) {
+        [data-testid="stHorizontalBlock"] .stButton > button {
+            font-size: 0.72rem !important;
+            padding: 0.4rem 0.5rem !important;
+        }
     }
 </style>
 """, unsafe_allow_html=True)
