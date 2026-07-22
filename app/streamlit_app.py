@@ -630,15 +630,24 @@ st.markdown("""
     }
 
     /* Botones Imagen/PDF/Voz: celeste normal, azul marino cuando esta activo
-       (aislados del esquema morado de Consultar/Companias via st.container key) */
+       (aislados del esquema morado de Consultar/Companias via st.container key).
+       Rectangulo redondeado, NUNCA circulo — por eso el radio es fijo en px
+       y no en 99px (que en un boton casi cuadrado se ve como circulo). */
+    [data-testid="column"]:has(.st-key-cont_btn_imagen),
+    [data-testid="column"]:has(.st-key-cont_btn_pdf),
+    [data-testid="column"]:has(.st-key-cont_btn_voz) {
+        min-width: 112px !important;
+    }
     .st-key-cont_btn_imagen .stButton > button,
     .st-key-cont_btn_pdf .stButton > button,
     .st-key-cont_btn_voz .stButton > button {
         background: #87CEEB !important;
         color: #1A3A5C !important;
         border: none !important;
-        border-radius: 99px !important;
+        border-radius: 10px !important;
         font-weight: 600 !important;
+        white-space: nowrap !important;
+        padding: 0.5rem 0.9rem !important;
     }
     .st-key-cont_btn_imagen .stButton > button:hover,
     .st-key-cont_btn_pdf .stButton > button:hover,
@@ -648,11 +657,13 @@ st.markdown("""
     }
     .st-key-cont_btn_imagen .stButton > button[kind="primary"],
     .st-key-cont_btn_pdf .stButton > button[kind="primary"],
-    .st-key-cont_btn_voz .stButton > button[kind="primary"],
+    .st-key-cont_btn_voz .stButton > button[kind="primary"] {
+        background: #1A3A5C !important;
+        border-radius: 10px !important;
+    }
     .st-key-cont_btn_imagen .stButton > button[kind="primary"] *,
     .st-key-cont_btn_pdf .stButton > button[kind="primary"] *,
     .st-key-cont_btn_voz .stButton > button[kind="primary"] * {
-        background: #1A3A5C !important;
         color: #FFFFFF !important;
     }
 
