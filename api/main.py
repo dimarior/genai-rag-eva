@@ -17,7 +17,7 @@ from src.rag_chain import ask
 
 app = FastAPI(
     title=API_TITLE,
-    description="Sistema RAG para consultas sobre tickets de soporte de Recamier",
+    description="Sistema RAG para consultas sobre tickets de soporte de la app móvil EVA",
     version="1.1.0",
 )
 
@@ -33,12 +33,16 @@ QUERY_ERRORS = Counter("rag_eva_query_errors_total",
 class QueryRequest(BaseModel):
     pregunta: str
     session_id: str = "default"
+    filial: str = None
+    categoria: str = None
 
     class Config:
         json_schema_extra = {
             "example": {
                 "pregunta": "¿Qué errores comunes tiene la app EVA?",
-                "session_id": "usuario_123"
+                "session_id": "usuario_123",
+                "filial": "Recamier",
+                "categoria": "Aplicaciones"
             }
         }
 
@@ -72,7 +76,12 @@ def query_rag(request: QueryRequest):
     QUERY_COUNT.inc()
     inicio = time.time()
     try:
-        respuesta = ask(request.pregunta, session_id=request.session_id)
+        respuesta = ask(
+            request.pregunta,
+            session_id=request.session_id,
+            filial=request.filial,
+            categoria=request.categoria,
+        )
         latencia = round(time.time() - inicio, 3)
         QUERY_LATENCY.observe(latencia)
         return {

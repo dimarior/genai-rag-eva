@@ -1,118 +1,75 @@
 """
 src/memory.py
--------------
-Memoria persistente con SQLite para el chatbot EVA.
-Guarda el historial de conversaciones entre sesiones.
+--------------
+Memoria persistente de conversaciones usando Supabase (Postgres en la nube).
+Reemplaza la version anterior con SQLite local, que no servia para
+desplegar en Streamlit Community Cloud (filesystem efimero: cada vez que
+la app se reinicia o "duerme", se perdia el historial).
 
+Requiere SUPABASE_URL y SUPABASE_KEY en el .env, y la tabla "conversaciones"
+ya creada en Supabase (ver el SQL de configuracion inicial).
 """
 
-import sqlite3
-import json
-from datetime import datetime
-from pathlib import Path
+from datetime import datetime, timezone
+from supabase import create_client, Client
 
-from src.config import ROOT_DIR
+from src.config import SUPABASE_URL, SUPABASE_KEY
 
-# Ruta del archivo SQLite
-DB_PATH = ROOT_DIR / "eva_memory.db"
+_client: Client = None
 
 
-def init_db():
-    """Crea las tablas si no existen."""
-    conn = sqlite3.connect(str(DB_PATH))
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS conversations (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id  TEXT NOT NULL,
-            role        TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
-            content     TEXT NOT NULL,
-            created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-        )
-    """)
-
-    cursor.execute("""
-        CREATE INDEX IF NOT EXISTS idx_session
-        ON conversations(session_id, created_at)
-    """)
-
-    conn.commit()
-    conn.close()
+def _get_client() -> Client:
+    """Crea el cliente de Supabase una sola vez y lo reutiliza."""
+    global _client
+    if _client is None:
+        _client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    return _client
 
 
 def save_message(session_id: str, role: str, content: str):
-    """Guarda un mensaje en el historial."""
-    conn = sqlite3.connect(str(DB_PATH))
-    cursor = conn.cursor()
-    cursor.execute(
-        "INSERT INTO conversations (session_id, role, content, created_at) "
-        "VALUES (?, ?, ?, ?)",
-        (session_id, role, content, datetime.utcnow().isoformat())
-    )
-    conn.commit()
-    conn.close()
+    """Guarda un mensaje en el historial de la sesion."""
+    client = _get_client()
+    client.table("conversaciones").insert({
+        "session_id": session_id,
+        "role": role,
+        "content": content,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }).execute()
 
 
 def get_history(session_id: str, limit: int = 10) -> list[dict]:
     """
-    Recupera los últimos N mensajes de una sesión.
+    Recupera los ultimos N mensajes de una sesion, en orden cronologico.
     Retorna lista de dicts con 'role' y 'content'.
     """
-    conn = sqlite3.connect(str(DB_PATH))
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT role, content FROM conversations "
-        "WHERE session_id = ? "
-        "ORDER BY created_at DESC LIMIT ?",
-        (session_id, limit)
+    client = _get_client()
+    respuesta = (
+        client.table("conversaciones")
+        .select("role, content, created_at")
+        .eq("session_id", session_id)
+        .order("created_at", desc=True)
+        .limit(limit)
+        .execute()
     )
-    rows = cursor.fetchall()
-    conn.close()
-    # Invertir para orden cronológico
-    return [{"role": r[0], "content": r[1]} for r in reversed(rows)]
+    filas = respuesta.data or []
+    # Supabase las devuelve mas reciente primero; invertimos para orden cronologico
+    return [{"role": f["role"], "content": f["content"]} for f in reversed(filas)]
 
 
 def get_all_sessions() -> list[str]:
-    """Retorna todas las sesiones únicas."""
-    conn = sqlite3.connect(str(DB_PATH))
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT DISTINCT session_id FROM conversations "
-        "ORDER BY created_at DESC"
-    )
-    rows = cursor.fetchall()
-    conn.close()
-    return [r[0] for r in rows]
-
-
-def clear_session(session_id: str):
-    """Borra el historial de una sesión."""
-    conn = sqlite3.connect(str(DB_PATH))
-    cursor = conn.cursor()
-    cursor.execute(
-        "DELETE FROM conversations WHERE session_id = ?",
-        (session_id,)
-    )
-    conn.commit()
-    conn.close()
+    """Retorna todos los session_id unicos que tienen historial."""
+    client = _get_client()
+    respuesta = client.table("conversaciones").select("session_id").execute()
+    filas = respuesta.data or []
+    return sorted(set(f["session_id"] for f in filas))
 
 
 def format_history_for_prompt(history: list[dict]) -> str:
-    """
-    Convierte el historial en texto para incluir en el prompt.
-    El LLM usa esto como contexto de conversación previa.
-    """
+    """Convierte el historial en texto plano legible para inyectar en el prompt."""
     if not history:
         return ""
-
-    lines = ["Historial de conversación previa:"]
+    lineas = []
     for msg in history:
-        role = "Usuario" if msg["role"] == "user" else "Asistente"
-        lines.append(f"{role}: {msg['content'][:300]}")
-
-    return "\n".join(lines)
-
-
-# Inicializar DB al importar
-init_db()
+        etiqueta = "Usuario" if msg["role"] == "user" else "Asistente"
+        lineas.append(f"{etiqueta}: {msg['content']}")
+    return "\n".join(lineas)

@@ -29,12 +29,16 @@ RETRIEVER_K = 4
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "mistral-small-latest")
 
-# --- Embeddings: sentence-transformers---
+# --- Embeddings: sentence-transformers, corre local, sin API key ---
 # Corre embebido en el proceso Python (sin API key, sin servidor externo tipo
 # Ollama), lo que permite desplegar en Streamlit Community Cloud sin fricción.
 EMBEDDING_MODEL_NAME = os.getenv(
     "EMBEDDING_MODEL_NAME", "paraphrase-multilingual-mpnet-base-v2"
 )
+
+# --- Supabase (memoria de chat + vectorstore, reemplaza SQLite/ChromaDB) ---
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 # --- Multimodal ---
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small")
@@ -45,6 +49,12 @@ if not MISTRAL_API_KEY:
     raise RuntimeError(
         "Falta MISTRAL_API_KEY. Crea un archivo .env en la raíz del proyecto "
         "con MISTRAL_API_KEY=tu_key."
+    )
+
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise RuntimeError(
+        "Falta SUPABASE_URL y/o SUPABASE_KEY. Agrega ambas a tu archivo .env "
+        "(las obtienes en Supabase > Project Settings > API Keys / Data API)."
     )
 
 # Crear carpetas si no existen al importar config

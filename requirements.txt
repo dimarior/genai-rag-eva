@@ -3,13 +3,12 @@ langchain
 langchain-community
 langchain-core
 langchain-text-splitters
-langchain-chroma
-chromadb
 pypdf
 openpyxl
 
 # ─── LLM (nube) / Embeddings (local, sin servidor externo) ───────────────────
 langchain-mistralai
+supabase
 sentence-transformers
 langchain-huggingface
 
