@@ -65,7 +65,12 @@ def get_all_sessions() -> list[str]:
 
 
 def format_history_for_prompt(history: list[dict]) -> str:
-    """Convierte el historial en texto plano legible para inyectar en el prompt."""
+    """Convierte el historial en texto plano legible para inyectar en el prompt.
+    Se mantiene completo (sin truncar) para conservar memoria real de la
+    conversacion (incluyendo detalles de PDFs/imagenes/audio ya analizados
+    en turnos anteriores) — el control sobre cuando usarlo o ignorarlo
+    depende de la instruccion del prompt en rag_chain.py, no de cortar
+    texto aqui."""
     if not history:
         return ""
     lineas = []

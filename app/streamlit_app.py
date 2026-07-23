@@ -660,8 +660,9 @@ st.markdown("""
     .st-key-cont_btn_imagen .stButton > button[kind="primary"],
     .st-key-cont_btn_pdf .stButton > button[kind="primary"],
     .st-key-cont_btn_voz .stButton > button[kind="primary"] {
-        background: #1A3A5C !important;
+        background: #7C4DFF !important;
         border-radius: 10px !important;
+        border: none !important;
     }
     .st-key-cont_btn_imagen .stButton > button[kind="primary"] *,
     .st-key-cont_btn_pdf .stButton > button[kind="primary"] *,
