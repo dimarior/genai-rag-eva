@@ -444,6 +444,16 @@ st.markdown("""
         color: #1A3A5C !important;
     }
 
+    /* EXCEPCION: los botones Imagen/PDF/Voz deben quedar rectangulares
+       (10px), no en forma de pastilla/circulo como el resto de botones
+       primary. Se sobreescribe aqui, con mas especificidad que la regla
+       global de arriba, para que sí gane. */
+    .st-key-cont_btn_imagen [data-testid="stBaseButton-primary"],
+    .st-key-cont_btn_pdf [data-testid="stBaseButton-primary"],
+    .st-key-cont_btn_voz [data-testid="stBaseButton-primary"] {
+        border-radius: 10px !important;
+    }
+
     .stTextArea textarea {
         border: 1.5px solid #E2E8F0 !important;
         border-radius: 12px !important;
