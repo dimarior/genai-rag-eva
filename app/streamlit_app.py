@@ -999,13 +999,16 @@ elif consultar and (hay_texto or hay_archivo):
                     contenido_usuario += f" {pregunta.strip()}"
 
             else:
-                prefijo = ""
-                if filial_sel != "todas":
-                    prefijo += f"[Compania: {FILIALES[filial_sel]['nombre']}] "
-                if categoria_sel_actual != "todas":
-                    prefijo += f"[Categoria: {CATEGORIAS[categoria_sel_actual]['nombre']}] "
-                pregunta_enriquecida = f"{prefijo}{pregunta.strip()}" if prefijo else pregunta.strip()
-                resultado = responder(pregunta_enriquecida, st.session_state["session_id"],
+                # NOTA: ya NO se agrega un prefijo de texto tipo
+                # "[Compania: X]" a la pregunta antes de buscar. Ese
+                # prefijo inflaba artificialmente el puntaje de similitud
+                # (al incluir literalmente "Recamier" en el texto, calzaba
+                # con cualquier ticket firmado por Recamier, sin importar
+                # el tema real) y rompia el umbral que detecta preguntas
+                # fuera de dominio. El filtro real de compania/categoria
+                # ya se aplica de forma correcta via filial=/categoria=
+                # (metadata en Supabase), sin tocar el texto de busqueda.
+                resultado = responder(pregunta.strip(), st.session_state["session_id"],
                                        filial=filial_nombre, categoria=categoria_nombre)
                 contenido_usuario = pregunta.strip()
 

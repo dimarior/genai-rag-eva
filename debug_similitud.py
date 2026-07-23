@@ -1,9 +1,9 @@
 from src.rag_chain import _get_vectorstore, RETRIEVER_K
 
 preguntas = [
-    "¿Cual es la distancia de la Tierra a la Luna?",
-    "¿Como se resuelve un problema de conexion VPN?",
-    "¿Que me recomiendas para el desayuno?",
+    "quien es el presidente de estados unidos",
+    "¿Cuál es la distancia de la Tierra a la Luna?",
+    "¿Cómo se resuelve un problema de conexión VPN?",
 ]
 
 vs = _get_vectorstore()
