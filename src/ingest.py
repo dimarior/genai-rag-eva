@@ -41,6 +41,8 @@ COLUMNAS_ALIASES = {
     ],
     "fecha_creacion": ["Fecha de creación", "Fecha Creación"],
     "ticket_id": ["Ticket ID", "ID de Ticket de Servicio"],
+    "nivel_escalamiento": ["Nivel 2 - Línea Responsable - MdS", "Línea Responsable"],
+    "es_vip": ["¿Ticket VIP Recamier?", "Ticket VIP"],
 }
 
 # Campos sin los cuales no vale la pena procesar el archivo
@@ -116,10 +118,24 @@ def _procesar_archivo(path) -> list[dict]:
         area_solicitante = obtener("area_solicitante")
         tipo_solicitud = obtener("tipo_solicitud")
         descripcion = obtener("descripcion")
-        solucion = obtener("solucion").replace(";", "\n- ")
+        # Associated Note puede traer varias notas separadas por ";" — cada
+        # una suele ser un paso distinto de gestion/escalamiento del ticket
+        # (por ejemplo: nota del agente nivel 1, luego nota de nivel 2/3).
+        # Se muestran como pasos numerados para que quede claro que es un
+        # historial, no una sola solucion.
+        solucion_raw = obtener("solucion")
+        pasos_solucion = [p.strip() for p in solucion_raw.split(";") if p.strip()]
+        if pasos_solucion:
+            solucion = "\n".join(
+                f"  {i}. {paso}" for i, paso in enumerate(pasos_solucion, start=1)
+            )
+        else:
+            solucion = "  (sin detalle documentado)"
         titulo = obtener("titulo")
         ticket_id = obtener("ticket_id")
         fecha = obtener("fecha_creacion")
+        nivel_escalamiento = obtener("nivel_escalamiento")
+        es_vip = obtener("es_vip")
 
         texto = (
             f"Ticket: {titulo}\n"
@@ -127,9 +143,15 @@ def _procesar_archivo(path) -> list[dict]:
             f"Subcategoría: {subcategoria}\n"
             f"Filial: {filial}\n"
             f"Área solicitante: {area_solicitante}\n"
-            f"Tipo de solicitud: {tipo_solicitud}\n\n"
-            f"Descripción del problema:\n{descripcion}\n\n"
-            f"Solución / gestión del agente:\n- {solucion}"
+            f"Tipo de solicitud: {tipo_solicitud}\n"
+        )
+        if nivel_escalamiento:
+            texto += f"Nivel de escalamiento / Línea responsable: {nivel_escalamiento}\n"
+        if es_vip:
+            texto += f"Ticket VIP: {es_vip}\n"
+        texto += (
+            f"\nDescripción del problema:\n{descripcion}\n\n"
+            f"Historial de gestión / escalamiento (en orden):\n{solucion}"
         )
 
         metadata = {
@@ -137,6 +159,8 @@ def _procesar_archivo(path) -> list[dict]:
             "categoria": categoria,
             "subcategoria": subcategoria,
             "filial": filial,
+            "nivel_escalamiento": nivel_escalamiento,
+            "es_vip": es_vip,
             "area_solicitante": area_solicitante,
             "tipo_solicitud": tipo_solicitud,
             "fecha_creacion": fecha,
@@ -182,19 +206,38 @@ def xlsx_to_jsonl() -> str:
         )
 
     # Deduplicar por ticket_id, en caso de que el mismo ticket aparezca
-    # en más de un archivo (ej. un año que se exportó dos veces)
-    vistos = set()
-    registros_unicos = []
+    # en mas de un archivo (ej. un export mas reciente con notas de
+    # seguimiento/escalamiento agregadas despues). En vez de quedarse con
+    # "el primero que aparece", se compara el LARGO del texto (titulo +
+    # descripcion + solucion) y se conserva la version MAS DETALLADA —
+    # asi, si un archivo nuevo trae notas de solucion mas completas para
+    # un ticket que ya existia, esa version gana sobre la mas corta.
+    mejor_por_id = {}
+    sin_ticket_id = []
+
     for r in todos_los_registros:
         tid = r["metadata"]["ticket_id"]
-        clave = tid if tid else r["text"]  # si no hay ticket_id, usa el texto
-        if clave not in vistos:
-            vistos.add(clave)
-            registros_unicos.append(r)
+        if not tid:
+            sin_ticket_id.append(r)
+            continue
+        actual = mejor_por_id.get(tid)
+        if actual is None or len(r["text"]) > len(actual["text"]):
+            mejor_por_id[tid] = r
+
+    # Los registros sin ticket_id se deduplican por texto exacto (caso raro)
+    vistos_sin_id = set()
+    registros_sin_id_unicos = []
+    for r in sin_ticket_id:
+        if r["text"] not in vistos_sin_id:
+            vistos_sin_id.add(r["text"])
+            registros_sin_id_unicos.append(r)
+
+    registros_unicos = list(mejor_por_id.values()) + registros_sin_id_unicos
 
     duplicados = len(todos_los_registros) - len(registros_unicos)
     if duplicados:
-        print(f"\n{duplicados} tickets duplicados detectados y removidos")
+        print(f"\n{duplicados} tickets duplicados detectados — se conservo "
+              f"en cada caso la version con mas detalle documentado")
 
     print(f"\nTotal tickets únicos combinados: {len(registros_unicos)}")
 
